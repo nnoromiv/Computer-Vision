@@ -871,6 +871,170 @@ def hsv_to_cv2(h, s, v):
     
     return (h_cv2, s_cv2, v_cv2)
 
+def colour_binarize (im, low, high, below=0, above=255, hsv=True):
+    """Segment colour image `im` into foreground (with value `fg`) and
+    background (with value `bg`) by colour.  `low` and `high` are lists
+    giving respectively the lower and upper bounds of a 'slice' of
+    colors to use for segmentation.  These should be in the same colour
+    space as `im`.  The resulting image is returned.
+
+    If `hsv` is set, the colour limits are expected to be provided in
+    HSV colour space and so are converted from sensible values into
+    those expected by OpenCV by routine `hsv_to_cv2` before use.
+
+    Moreover, if the hue value in the `low` is larger than that in
+    `high`, then the hue is taken to span 360 degrees -- this is useful
+    when segmenting red regions.
+
+    Args:
+        im (image): colour image to be threshold and binarized
+        low (list of 3 values): the lower colour bounds
+        high (list of 3 values): the upper colour bounds
+        below (float): value to which pixels lower than `thresh` are set
+                    (default: 0)
+        above (float): value to which pixels greater than `thresh` are set
+                    (default: 255)
+        hsv (bool): indicates whether `low` and `high` are in HSV space
+                    (default: True)
+
+    Returns:
+        bim (image): binarized image
+
+    Tests:
+        >>> import numpy
+        >>> im = numpy.zeros ((10,12,3))
+        >>> im[5:8,5:10] = [4,50,50]
+        >>> im[5:6,8:10] = [177,50,50]
+        >>> low =  [350, 10, 10]
+        >>> high = [ 20, 90, 90]
+        >>> mask = colour_binarize (im, low, high)
+        >>> print (mask)
+        [[  0   0   0   0   0   0   0   0   0   0   0   0]
+         [  0   0   0   0   0   0   0   0   0   0   0   0]
+         [  0   0   0   0   0   0   0   0   0   0   0   0]
+         [  0   0   0   0   0   0   0   0   0   0   0   0]
+         [  0   0   0   0   0   0   0   0   0   0   0   0]
+         [  0   0   0   0   0 255 255 255 255 255   0   0]
+         [  0   0   0   0   0 255 255 255 255 255   0   0]
+         [  0   0   0   0   0 255 255 255 255 255   0   0]
+         [  0   0   0   0   0   0   0   0   0   0   0   0]
+         [  0   0   0   0   0   0   0   0   0   0   0   0]]
+        >>> mask = colour_binarize (im, low, high, above=0, below=255)
+        >>> print (mask)
+        [[255 255 255 255 255 255 255 255 255 255 255 255]
+         [255 255 255 255 255 255 255 255 255 255 255 255]
+         [255 255 255 255 255 255 255 255 255 255 255 255]
+         [255 255 255 255 255 255 255 255 255 255 255 255]
+         [255 255 255 255 255 255 255 255 255 255 255 255]
+         [255 255 255 255 255   0   0   0   0   0 255 255]
+         [255 255 255 255 255   0   0   0   0   0 255 255]
+         [255 255 255 255 255   0   0   0   0   0 255 255]
+         [255 255 255 255 255 255 255 255 255 255 255 255]
+         [255 255 255 255 255 255 255 255 255 255 255 255]]
+
+    """
+    
+    # Convert the image to CV2 if necessary
+    if hsv:
+        low = hsv_to_cv2(*low)
+        high = hsv_to_cv2(*high)
+
+    if hsv and low[0] > high[0]:  # Handle hue wraparound
+        mask1 = cv2.inRange(im, (0, low[1], low[2]), (high[0], high[1], high[2]))
+        mask2 = cv2.inRange(im, (low[0], low[1], low[2]), (360, high[1], high[2]))
+        mask = cv2.bitwise_or(mask1, mask2)
+    else:
+        mask = cv2.inRange(im, low, high)    
+        
+    bim = numpy.where(mask > 0, above, below).astype(numpy.uint8)
+    
+    return bim
+
+import cv2
+
+def largest_contour(contours):
+    """Return the largest by area of a set of external contours found by OpenCV routine cv2.findContours.
+
+    Args:
+        contours (list): list of contours returned by cv2.findContours.
+
+    Returns:
+        contour (contour): the contour with the largest area.
+
+    Tests:
+        >>> im = arrowhead ()
+        >>> im[1,1] = 255
+        >>> c, junk = cv2.findContours (im, cv2.RETR_EXTERNAL, cv2.CHAIN_APPROX_SIMPLE)
+        >>> lc = largest_contour (c)
+        >>> print (cv2.contourArea (lc))
+        5.0
+    """
+    if not contours:
+        return None  # Return None if no contours are provided
+
+    # Find the contour with the maximum area
+    return max(contours, key=cv2.contourArea)
+
+def circularity (c):
+    """Return the circularity of the contour `c`, returned from the
+    OpenCV routine cv2.findContours.
+
+    Args:
+        c (contour): contours returned by cv2.findContours
+
+    Returns:
+        circ (float): the circularity of contour c
+
+    Tests:
+        >>> im = arrowhead ()
+        >>> c, junk = cv2.findContours (im, cv2.RETR_EXTERNAL, cv2.CHAIN_APPROX_SIMPLE)
+        >>> lc = largest_contour (c)
+        >>> print ("%.4f" % circularity (lc))
+        68.3411
+    """
+    
+    perimeter = cv2.arcLength(c, True) # Compute the perimeter
+    area = cv2.contourArea(c)  # Compute the area
+    
+    if area == 0:
+        return 0.0 # Avoid Zero division
+    
+    return (perimeter ** 2) / area
+
+
+def rectangularity (c):
+    """Return the rectangularity of the contour `c`, returned from the
+    OpenCV routine cv2.findContours.
+
+    Args:
+        c (contour): contours returned by cv2.findContours
+
+    Returns:
+        rec (float): the rectangularity of contour c
+
+    Tests:
+        >>> im = arrowhead ()
+        >>> c, junk = cv2.findContours (im, cv2.RETR_EXTERNAL, cv2.CHAIN_APPROX_SIMPLE)
+        >>> lc = largest_contour (c)
+        >>> print ("%.4f" % rectangularity (lc))
+        4.8276
+    """
+    
+    area = cv2.contourArea(c)
+    
+    if area == 0:
+        return 0.0 # Avoid Zero division
+    
+    # Compute the rotated bounding box
+    rect = cv2.minAreaRect(c)  # Returns center, size (w, h), and angle of rotation
+    box_area = rect[1][0] * rect[1][1]  # Width * Height of the bounding box
+
+    if box_area == 0:
+        return 0.0  # Avoid division by zero
+
+    return box_area / area
+    
+
 
 #-------------------------------------------------------------------------------
 # EPILOGUE.
