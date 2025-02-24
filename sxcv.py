@@ -7,7 +7,7 @@ execution.  Its Python wrappers are provided by the cv2 module and are
 quite "thin", meaning that they mimic closely the C++ calls.  That means
 they are less elegant than they could be for a Python programmer.
 Fortunately, the image representation used by OpenCV in Python is that
-of a numpy array, so we are able to build on both its and OpenV's
+of a numpy array, so we are able to build on both its and OpenCV's
 functionality.
 
 This module wraps some OpenCV and numpy functionality to make it more
@@ -63,7 +63,7 @@ DEBUG = False
 
 # We occasionally have to do things differently on different operating systems,
 # so figure out what we're running on.
-systype = platform.system ()
+systype = platform.system()
 
 # Extract any settings from the environment variable "SXCV" and store them in
 # the global list ENVIRONMENT.
@@ -679,7 +679,6 @@ def highest (im):
     
     return int(numpy.max(im))
 
-
 def lowest (im):
     """
     Return the minimum of the pixel values of an image.
@@ -725,7 +724,6 @@ def extremes (im):
     
     return lowest(im), highest(im)
 
-
 def histogram (im):
     """
     Return a histogram (frequency for each grey level) of the image `im`.
@@ -758,7 +756,7 @@ def histogram (im):
     
     levels = highest (im) + 1  # Get the number of grey levels
     vals = numpy.arange(levels) # Create an array of grey level values
-        
+
     if len (im.shape) == 2:
     # It's a monochrome image, so we have only one histogram.
         hist, _ = numpy.histogram(im, bins=numpy.arange(levels + 1))
@@ -842,6 +840,7 @@ def binarize (im, threshold, below=0, above=255):
         
     bim[bim == 0] = threshold + 1
     bim[bim <= threshold] = below
+    
     bim[bim == threshold + 1] = above
 
     return bim
@@ -950,8 +949,6 @@ def colour_binarize (im, low, high, below=0, above=255, hsv=True):
     
     return bim
 
-import cv2
-
 def largest_contour(contours):
     """Return the largest by area of a set of external contours found by OpenCV routine cv2.findContours.
 
@@ -1001,7 +998,6 @@ def circularity (c):
     
     return (perimeter ** 2) / area
 
-
 def rectangularity (c):
     """Return the rectangularity of the contour `c`, returned from the
     OpenCV routine cv2.findContours.
@@ -1033,8 +1029,6 @@ def rectangularity (c):
         return 0.0  # Avoid division by zero
 
     return box_area / area
-    
-
 
 #-------------------------------------------------------------------------------
 # EPILOGUE.

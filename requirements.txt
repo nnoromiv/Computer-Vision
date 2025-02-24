@@ -1,0 +1,3 @@
+opencv-python==4.5.0.86
+numpy==2.2.0
+matplotlib==3.10

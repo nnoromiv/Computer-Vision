@@ -2,6 +2,8 @@
     "cSpell.words": [
         "binarize",
         "imread",
+        "maxarea",
+        "minarea",
         "sxcv",
         "thresholded"
     ]
